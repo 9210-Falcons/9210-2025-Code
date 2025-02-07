@@ -13,7 +13,8 @@
 
 package frc.robot.subsystems.drive;
 
-import static edu.wpi.first.units.Units.*;
+import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.Volts;
 
 import com.ctre.phoenix6.CANBus;
 import com.pathplanner.lib.auto.AutoBuilder;
@@ -158,6 +159,8 @@ public class Drive extends SubsystemBase {
                 (voltage) -> runCharacterization(voltage.in(Volts)), null, this));
   }
 
+  Pose2d NathanPose2d = new Pose2d();
+
   @Override
   public void periodic() {
     odometryLock.lock(); // Prevents odometry updates while reading data
@@ -180,7 +183,7 @@ public class Drive extends SubsystemBase {
       Logger.recordOutput("SwerveStates/Setpoints", new SwerveModuleState[] {});
       Logger.recordOutput("SwerveStates/SetpointsOptimized", new SwerveModuleState[] {});
     }
-
+    Pose2d pastPose2d = poseEstimator.getEstimatedPosition();
     // Update odometry
     double[] sampleTimestamps =
         modules[0].getOdometryTimestamps(); // All signals are sampled together
@@ -212,7 +215,23 @@ public class Drive extends SubsystemBase {
       // Apply update
       poseEstimator.updateWithTime(sampleTimestamps[i], rawGyroRotation, modulePositions);
     }
-
+    Translation2d poseDifference =
+        poseEstimator.getEstimatedPosition().getTranslation().minus(pastPose2d.getTranslation());
+    Pose2d currentPose = poseEstimator.getEstimatedPosition();
+    if (poseDifference.getX() < 0) {
+      currentPose =
+          new Pose2d(
+              currentPose.getX() + poseDifference.getX() * 0.961331,
+              currentPose.getY(),
+              currentPose.getRotation());
+    } else {
+      currentPose =
+          new Pose2d(
+              currentPose.getX() + poseDifference.getX() * 1.04191,
+              currentPose.getY(),
+              currentPose.getRotation());
+    }
+    poseEstimator.resetPose(currentPose);
     // Update gyro alert
     gyroDisconnectedAlert.set(!gyroInputs.connected && Constants.currentMode != Mode.SIM);
   }
