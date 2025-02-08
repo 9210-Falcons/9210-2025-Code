@@ -229,7 +229,7 @@ public class Drive extends SubsystemBase {
               currentPose.getY(),
               currentPose.getRotation());
     }
-    poseEstimator.resetPose(currentPose);
+    // poseEstimator.resetPose(currentPose);
     // Update gyro alert
     gyroDisconnectedAlert.set(!gyroInputs.connected && Constants.currentMode != Mode.SIM);
   }
