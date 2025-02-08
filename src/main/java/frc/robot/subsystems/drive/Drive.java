@@ -159,8 +159,6 @@ public class Drive extends SubsystemBase {
                 (voltage) -> runCharacterization(voltage.in(Volts)), null, this));
   }
 
-  Pose2d NathanPose2d = new Pose2d();
-
   @Override
   public void periodic() {
     odometryLock.lock(); // Prevents odometry updates while reading data
@@ -221,7 +219,7 @@ public class Drive extends SubsystemBase {
     if (poseDifference.getX() < 0) {
       currentPose =
           new Pose2d(
-              currentPose.getX() + poseDifference.getX() * 0.961331,
+              currentPose.getX() + poseDifference.getX() * 0.961331, // try 0.93556
               currentPose.getY(),
               currentPose.getRotation());
     } else {
