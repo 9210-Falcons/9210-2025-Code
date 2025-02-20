@@ -21,6 +21,8 @@ import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.WaitCommand;
+import frc.robot.subsystems.mechanisms.Scocer;
 import java.util.ArrayList;
 import java.util.List;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
@@ -34,7 +36,7 @@ public class CustomAutoBuilder {
 
   public static Field2d m_field = new Field2d();
   public static Translation2d[] vertexs = new Translation2d[6];
-  public static int NUMBER_OF_CHOOSERS = 3;
+  public static int NUMBER_OF_CHOOSERS = 2;
 
   @SuppressWarnings("unchecked")
   public static void chooserBuilder() {
@@ -72,8 +74,9 @@ public class CustomAutoBuilder {
 
       scoreChooser.addDefaultOption("IJ", IJ);
     }
-
+    System.out.println("Test2");
     for (LoggedDashboardChooser<Pose2d> loadStationChooser : loadStationChoosers) {
+      System.out.println("Test");
       loadStationChooser.addOption("R1", R1);
       loadStationChooser.addOption("R0", R0);
 
@@ -94,7 +97,7 @@ public class CustomAutoBuilder {
   public static PathPlannerPath startPath;
   // public static ArrayList<Pose2d[]> paths = new ArrayList<>();
 
-  public static void update() {
+  public static void update(Scocer scocer) {
     ArrayList<Pose2d[]> paths = new ArrayList<>();
     startPath = getPathFromPoints(startChooser.get().getTranslation(), scoreChoosers[0].get());
 
@@ -108,7 +111,13 @@ public class CustomAutoBuilder {
     }
 
     paths.set(0, duplicatedArray);
-    autonPath = AutoBuilder.followPath(startPath);
+    autonPath =
+        Commands.sequence(
+            AutoBuilder.followPath(startPath),
+            Commands.deadline(
+                new WaitCommand(1),
+                Commands.run(() -> scocer.setPower(0.3), scocer)
+                    .finallyDo(() -> scocer.setPower(0.0))));
 
     for (int i = 0; i < scoreChoosers.length - 1; i++) {
       PathPlannerPath path1 =
@@ -140,7 +149,11 @@ public class CustomAutoBuilder {
                               path2
                                   .getPathPoses()
                                   .toArray(new Pose2d[path2.getPathPoses().size()]))),
-              AutoBuilder.followPath(path2));
+              AutoBuilder.followPath(path2),
+              Commands.deadline(
+                  new WaitCommand(1),
+                  Commands.run(() -> scocer.setPower(0.3), scocer)
+                      .finallyDo(() -> scocer.setPower(0.0))));
     }
     m_field.getObject("traj").setPoses(paths.get(displayChooser.get()));
   }
@@ -166,12 +179,7 @@ public class CustomAutoBuilder {
         // paths, so can
         // be null for on-the-fly paths.
         new GoalEndState(
-            0.0,
-            point2
-                .getRotation()
-                .rotateBy(
-                    Rotation2d.fromDegrees(
-                        180))), // Goal end state. You can set a holonomic rotation here. If
+            0.0, point2.getRotation()), // Goal end state. You can set a holonomic rotation here. If
         // using a differential drivetrain, the rotation will have no
         // effect.
         false);
@@ -202,7 +210,7 @@ public class CustomAutoBuilder {
                 new Waypoint(endPoint, endPoint, null)));
 
     List<Integer> intersectedPlanes = getIntersectedPlanes(startPoint, endPoint);
-    if (intersectedPlanes.isEmpty()) return waypoints;
+    if (intersectedPlanes.size() < 2) return waypoints;
 
     int planeDiff = Math.abs(intersectedPlanes.get(0) - intersectedPlanes.get(1));
     int planeLength = Math.min(planeDiff, 6 - planeDiff);
@@ -294,23 +302,32 @@ public class CustomAutoBuilder {
    * @return A list of indices representing intersected reef edges.
    */
   public static ArrayList<Integer> getIntersectedPlanes(
-      Translation2d startPoint, Translation2d endPoint) {
+      Translation2d startPoint, Translation2d endPoint, double reefSize) {
     ArrayList<Integer> intersectedPlanes = new ArrayList<>();
     for (int i = 0; i < reefPointsAngles.length; i++) {
       Translation2d vertex1 =
           new Translation2d(
-              REEF_X_BLUE + REEF_SIZE * Math.sin(reefPointsAngles[i]),
-              REEF_Y + REEF_SIZE * Math.cos(reefPointsAngles[i]));
+              REEF_X_BLUE + reefSize * Math.sin(reefPointsAngles[i]),
+              REEF_Y + reefSize * Math.cos(reefPointsAngles[i]));
       int nextI = (i + 1) % 6;
       Translation2d vertex2 =
           new Translation2d(
-              REEF_X_BLUE + REEF_SIZE * Math.sin(reefPointsAngles[nextI]),
-              REEF_Y + REEF_SIZE * Math.cos(reefPointsAngles[nextI]));
+              REEF_X_BLUE + reefSize * Math.sin(reefPointsAngles[nextI]),
+              REEF_Y + reefSize * Math.cos(reefPointsAngles[nextI]));
       if (doIntersect(vertex1, vertex2, startPoint, endPoint)) {
         intersectedPlanes.add(i);
       }
     }
+    if (intersectedPlanes.size() == 1) {
+      return getIntersectedPlanes(startPoint, endPoint, reefSize - 0.1);
+    }
+
     return intersectedPlanes;
+  }
+
+  public static ArrayList<Integer> getIntersectedPlanes(
+      Translation2d startPoint, Translation2d endPoint) {
+    return getIntersectedPlanes(startPoint, endPoint, REEF_SIZE);
   }
 
   /**
