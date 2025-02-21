@@ -13,6 +13,9 @@
 
 package frc.robot;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.RobotBase;
@@ -44,6 +47,9 @@ public final class Constants {
     public static final Pose2d START_CENTER = new Pose2d(8.0, 2.4, START_ROTATION);
     public static final Pose2d START_RIGHT = new Pose2d(8.0, 5.13, START_ROTATION);
 
+    public static final double LEFT_OFFSET = 0.5; // In Meters
+    public static final double RIGHT_OFFSET = -0.5; // In Meters
+
     public static final Pose2d AB = new Pose2d(3.0, 4.0, Rotation2d.fromDegrees(0));
     public static final Pose2d CD = new Pose2d(3.7, 2.7, Rotation2d.fromDegrees(60));
     public static final Pose2d EF = new Pose2d(5.1, 3.0, Rotation2d.fromDegrees(120));
@@ -53,6 +59,17 @@ public final class Constants {
 
     public static final Pose2d R1 = new Pose2d(1.5, 6.6, Rotation2d.fromDegrees(-60));
     public static final Pose2d R0 = new Pose2d(1.5, 1.4, Rotation2d.fromDegrees(60));
+
+     public static final Map<Pose2d, Double> poseAngleMap = new HashMap<>();
+
+    static {
+      poseAngleMap.put(AB, 0.0);
+      poseAngleMap.put(CD, -60.0);
+      poseAngleMap.put(EF, -120.0);
+      poseAngleMap.put(GH, -180.0);
+      poseAngleMap.put(IJ, -240.0);
+      poseAngleMap.put(KL, -300.0);
+    }
 
     public static final double MAX_VELOCITY = 1;
     public static final double MAX_ACCELERATION = 0.75;

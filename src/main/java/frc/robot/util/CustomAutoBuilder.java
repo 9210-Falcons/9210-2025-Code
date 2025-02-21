@@ -8,7 +8,6 @@ import static frc.robot.Constants.AutonConstants.*;
 
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.path.GoalEndState;
-import com.pathplanner.lib.path.IdealStartingState;
 import com.pathplanner.lib.path.PathConstraints;
 import com.pathplanner.lib.path.PathPlannerPath;
 import com.pathplanner.lib.path.Waypoint;
@@ -21,22 +20,23 @@ import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
-import edu.wpi.first.wpilibj2.command.WaitCommand;
-import frc.robot.subsystems.mechanisms.Scocer;
+import frc.robot.subsystems.drive.Drive;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
 /** Add your docs here. */
 public class CustomAutoBuilder {
   public static LoggedDashboardChooser<Pose2d>[] scoreChoosers;
+  public static LoggedDashboardChooser<Double>[] lateralChoosers;
   public static LoggedDashboardChooser<Pose2d>[] loadStationChoosers;
   public static LoggedDashboardChooser<Pose2d> startChooser;
   public static LoggedDashboardChooser<Integer> displayChooser;
 
   public static Field2d m_field = new Field2d();
   public static Translation2d[] vertexs = new Translation2d[6];
-  public static int NUMBER_OF_CHOOSERS = 2;
+  public static int NUMBER_OF_CHOOSERS = 1;
 
   @SuppressWarnings("unchecked")
   public static void chooserBuilder() {
@@ -44,12 +44,16 @@ public class CustomAutoBuilder {
     displayChooser = new LoggedDashboardChooser<Integer>("Path Display");
 
     scoreChoosers = new LoggedDashboardChooser[NUMBER_OF_CHOOSERS];
+    lateralChoosers = new LoggedDashboardChooser[NUMBER_OF_CHOOSERS];
     loadStationChoosers = new LoggedDashboardChooser[NUMBER_OF_CHOOSERS - 1];
 
     // Change the number after "i < " to add to the path length. Both number MUST be
     // the same.
-    for (int i = 0; i < scoreChoosers.length; i++)
+    for (int i = 0; i < scoreChoosers.length; i++) {
       scoreChoosers[i] = new LoggedDashboardChooser<Pose2d>(String.format("Score Position %s", i));
+      lateralChoosers[i] =
+          new LoggedDashboardChooser<Double>(String.format("Lateral Chooser %s", i));
+    }
     for (int i = 0; i < loadStationChoosers.length; i++)
       loadStationChoosers[i] =
           new LoggedDashboardChooser<Pose2d>(String.format("Load Station %s", i));
@@ -74,9 +78,15 @@ public class CustomAutoBuilder {
 
       scoreChooser.addDefaultOption("IJ", IJ);
     }
-    System.out.println("Test2");
+
+    for (LoggedDashboardChooser<Double> lateralChooser : lateralChoosers) {
+      lateralChooser.addOption("Right", RIGHT_OFFSET);
+      lateralChooser.addOption("Left", LEFT_OFFSET);
+
+      lateralChooser.addDefaultOption("Right", RIGHT_OFFSET);
+    }
+
     for (LoggedDashboardChooser<Pose2d> loadStationChooser : loadStationChoosers) {
-      System.out.println("Test");
       loadStationChooser.addOption("R1", R1);
       loadStationChooser.addOption("R0", R0);
 
@@ -97,68 +107,74 @@ public class CustomAutoBuilder {
   public static PathPlannerPath startPath;
   // public static ArrayList<Pose2d[]> paths = new ArrayList<>();
 
-  public static void update(Scocer scocer) {
+  public static void trajectoryDisplay(Pose2d[] path) {
+    // This is really cursed dont do this
+    Pose2d[] result = Arrays.copyOf(path, path.length * 2);
+    for (int i = 0; i < path.length; i++) result[i + path.length] = path[path.length - i - 1];
+    m_field.getObject("traj").setPoses(result);
+  }
+
+  public static Command trajectoryDisplay(PathPlannerPath path) {
+    return Commands.runOnce(() -> trajectoryDisplay(pathToPose(path)));
+  }
+
+  public static Pose2d[] pathToPose(PathPlannerPath path) {
+    return path.getPathPoses().toArray(new Pose2d[path.getPathPoses().size()]);
+  }
+
+  public static ArrayList<Command> drivePaths;
+
+  public static void update() {
     ArrayList<Pose2d[]> paths = new ArrayList<>();
-    startPath = getPathFromPoints(startChooser.get().getTranslation(), scoreChoosers[0].get());
+    drivePaths = new ArrayList<>();
+    startPath =
+        getPathFromPoints(
+            startChooser.get().getTranslation(),
+            applyOffset(scoreChoosers[0].get(), lateralChoosers[0].get()));
 
     paths.add(startPath.getPathPoses().toArray(new Pose2d[startPath.getPathPoses().size()]));
-    // This is really cursed dont do this
-    Pose2d[] duplicatedArray = new Pose2d[paths.get(0).length * 2];
-
-    for (int i = 0; i < paths.get(0).length; i++) {
-      duplicatedArray[i] = paths.get(0)[i];
-      duplicatedArray[paths.get(0).length * 2 - 1 - i] = paths.get(0)[i];
-    }
-
-    paths.set(0, duplicatedArray);
-    autonPath =
-        Commands.sequence(
-            AutoBuilder.followPath(startPath),
-            Commands.deadline(
-                new WaitCommand(1),
-                Commands.run(() -> scocer.setPower(0.3), scocer)
-                    .finallyDo(() -> scocer.setPower(0.0))));
-
+    autonPath = Commands.sequence(trajectoryDisplay(startPath), AutoBuilder.followPath(startPath));
+    drivePaths.add(
+        Commands.sequence(trajectoryDisplay(startPath), AutoBuilder.followPath(startPath)));
     for (int i = 0; i < scoreChoosers.length - 1; i++) {
       PathPlannerPath path1 =
-          getPathFromPoints(scoreChoosers[i].get().getTranslation(), loadStationChoosers[i].get());
+          getPathFromPoints(
+              applyOffset(scoreChoosers[i].get(), lateralChoosers[i].get()).getTranslation(),
+              loadStationChoosers[i].get());
       PathPlannerPath path2 =
           getPathFromPoints(
-              loadStationChoosers[i].get().getTranslation(), scoreChoosers[i + 1].get());
+              loadStationChoosers[i].get().getTranslation(),
+              applyOffset(scoreChoosers[i + 1].get(), lateralChoosers[i + 1].get()));
 
       paths.add(path1.getPathPoses().toArray(new Pose2d[path1.getPathPoses().size()]));
       paths.add(path2.getPathPoses().toArray(new Pose2d[path2.getPathPoses().size()]));
 
+      drivePaths.add(Commands.sequence(trajectoryDisplay(path1), AutoBuilder.followPath(path1)));
+      drivePaths.add(Commands.sequence(trajectoryDisplay(path2), AutoBuilder.followPath(path2)));
       autonPath =
           Commands.sequence(
               autonPath,
-              Commands.runOnce(
-                  () ->
-                      m_field
-                          .getObject("traj")
-                          .setPoses(
-                              path1
-                                  .getPathPoses()
-                                  .toArray(new Pose2d[path1.getPathPoses().size()]))),
+              trajectoryDisplay(path1),
               AutoBuilder.followPath(path1),
-              Commands.runOnce(
-                  () ->
-                      m_field
-                          .getObject("traj")
-                          .setPoses(
-                              path2
-                                  .getPathPoses()
-                                  .toArray(new Pose2d[path2.getPathPoses().size()]))),
-              AutoBuilder.followPath(path2),
-              Commands.deadline(
-                  new WaitCommand(1),
-                  Commands.run(() -> scocer.setPower(0.3), scocer)
-                      .finallyDo(() -> scocer.setPower(0.0))));
+              trajectoryDisplay(path2),
+              AutoBuilder.followPath(path2));
     }
-    m_field.getObject("traj").setPoses(paths.get(displayChooser.get()));
+    trajectoryDisplay(paths.get(displayChooser.get()));
   }
 
-  public static Command getAutonCommand() {
+  public static Pose2d applyOffset(Pose2d pose, double lateralOffset) {
+    double reefAngle = Math.toRadians(poseAngleMap.get(pose));
+    Translation2d positionOffset =
+        new Translation2d(lateralOffset * Math.sin(reefAngle), lateralOffset * Math.cos(reefAngle));
+    return new Pose2d(pose.getTranslation().plus(positionOffset), pose.getRotation());
+  }
+
+  public static Command[] getDrivePaths() {
+    Command[] arr = new Command[drivePaths.size()];
+    return drivePaths.toArray(arr);
+  }
+
+  public static Command getAutonCommand(Drive drive) {
     return Commands.sequence(autonPath);
   }
 
@@ -166,7 +182,6 @@ public class CustomAutoBuilder {
     PathConstraints constraints =
         new PathConstraints(MAX_VELOCITY, MAX_ACCELERATION, Math.PI, 2 * Math.PI);
     List<Waypoint> waypoints = generateWaypoints(point1, point2.getTranslation());
-
     return new PathPlannerPath(
         waypoints,
         new ArrayList<>(),
@@ -174,8 +189,7 @@ public class CustomAutoBuilder {
         new ArrayList<>(),
         new ArrayList<>(),
         constraints,
-        new IdealStartingState(
-            0.0, START_ROTATION), // The ideal starting state, this is only relevant for pre-planned
+        null, // The ideal starting state, this is only relevant for pre-planned
         // paths, so can
         // be null for on-the-fly paths.
         new GoalEndState(
@@ -193,6 +207,7 @@ public class CustomAutoBuilder {
     }
     return startChooser.get();
   }
+
   /**
    * Generates a list of waypoints for a path between a given start and end point. The method
    * considers intersected planes and uses a neural network model to determine optimal control
@@ -210,7 +225,7 @@ public class CustomAutoBuilder {
                 new Waypoint(endPoint, endPoint, null)));
 
     List<Integer> intersectedPlanes = getIntersectedPlanes(startPoint, endPoint);
-    if (intersectedPlanes.size() < 2) return waypoints;
+    if (intersectedPlanes.isEmpty()) return waypoints;
 
     int planeDiff = Math.abs(intersectedPlanes.get(0) - intersectedPlanes.get(1));
     int planeLength = Math.min(planeDiff, 6 - planeDiff);
@@ -231,8 +246,7 @@ public class CustomAutoBuilder {
         int v1 = intersectedPlanes.get(0) + 1;
         int v2 = intersectedPlanes.get(0) + 2;
 
-        if ((intersectedPlanes.get(0) == 0 && intersectedPlanes.get(1) == 4)
-            || (intersectedPlanes.get(0) == 1 && intersectedPlanes.get(1) == 5)) {
+        if ((intersectedPlanes.get(0) == 1 && intersectedPlanes.get(1) == 5)) {
           v1 = 0;
           v2 = 1;
         } else if (intersectedPlanes.get(0) == 2 && intersectedPlanes.get(1) == 5) {
@@ -241,6 +255,9 @@ public class CustomAutoBuilder {
         } else if ((intersectedPlanes.get(0) == 1 && intersectedPlanes.get(1) == 4)) {
           v1 = 3;
           v2 = 4;
+        } else if ((intersectedPlanes.get(0) == 0 && intersectedPlanes.get(1) == 4)) {
+          v1 = 5;
+          v2 = 0;
         }
 
         vertexPoint1 = vertexs[v1];
@@ -302,6 +319,11 @@ public class CustomAutoBuilder {
    * @return A list of indices representing intersected reef edges.
    */
   public static ArrayList<Integer> getIntersectedPlanes(
+      Translation2d startPoint, Translation2d endPoint) {
+    return getIntersectedPlanes(startPoint, endPoint, REEF_SIZE);
+  }
+
+  public static ArrayList<Integer> getIntersectedPlanes(
       Translation2d startPoint, Translation2d endPoint, double reefSize) {
     ArrayList<Integer> intersectedPlanes = new ArrayList<>();
     for (int i = 0; i < reefPointsAngles.length; i++) {
@@ -323,11 +345,6 @@ public class CustomAutoBuilder {
     }
 
     return intersectedPlanes;
-  }
-
-  public static ArrayList<Integer> getIntersectedPlanes(
-      Translation2d startPoint, Translation2d endPoint) {
-    return getIntersectedPlanes(startPoint, endPoint, REEF_SIZE);
   }
 
   /**
