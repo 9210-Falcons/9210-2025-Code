@@ -13,12 +13,11 @@
 
 package frc.robot;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.RobotBase;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * This class defines the runtime mode used by AdvantageKit. The mode is always "real" when running
@@ -43,24 +42,24 @@ public final class Constants {
   public static class AutonConstants {
     public static final Rotation2d START_ROTATION = Rotation2d.fromDegrees(180); // 180
 
-    public static final Pose2d START_LEFT = new Pose2d(8.0, 7.15, START_ROTATION);
+    public static final Pose2d START_LEFT = new Pose2d(2.4, 5.5, START_ROTATION);
     public static final Pose2d START_CENTER = new Pose2d(8.0, 2.4, START_ROTATION);
     public static final Pose2d START_RIGHT = new Pose2d(8.0, 5.13, START_ROTATION);
 
-    public static final double LEFT_OFFSET = 0.5; // In Meters
-    public static final double RIGHT_OFFSET = -0.5; // In Meters
+    public static final double LEFT_OFFSET = 0.0; // In Meters
+    public static final double RIGHT_OFFSET = -0.0; // In Meters
 
     public static final Pose2d AB = new Pose2d(3.0, 4.0, Rotation2d.fromDegrees(0));
     public static final Pose2d CD = new Pose2d(3.7, 2.7, Rotation2d.fromDegrees(60));
     public static final Pose2d EF = new Pose2d(5.1, 3.0, Rotation2d.fromDegrees(120));
     public static final Pose2d GH = new Pose2d(5.7, 3.87, Rotation2d.fromDegrees(180));
-    public static final Pose2d IJ = new Pose2d(5.1, 5.1, Rotation2d.fromDegrees(-120));
+    public static final Pose2d IJ = new Pose2d(5.4, 5.4, Rotation2d.fromDegrees(-120));
     public static final Pose2d KL = new Pose2d(3.8, 5.3, Rotation2d.fromDegrees(-60));
 
-    public static final Pose2d R1 = new Pose2d(1.5, 6.6, Rotation2d.fromDegrees(-60));
-    public static final Pose2d R0 = new Pose2d(1.5, 1.4, Rotation2d.fromDegrees(60));
+    public static final Pose2d R1 = new Pose2d(0.6, 7.5, Rotation2d.fromDegrees(-50));
+    public static final Pose2d R0 = new Pose2d(0.6, .5, Rotation2d.fromDegrees(50));
 
-     public static final Map<Pose2d, Double> poseAngleMap = new HashMap<>();
+    public static final Map<Pose2d, Double> poseAngleMap = new HashMap<>();
 
     static {
       poseAngleMap.put(AB, 0.0);

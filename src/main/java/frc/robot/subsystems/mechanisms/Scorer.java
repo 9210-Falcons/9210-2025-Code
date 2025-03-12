@@ -7,15 +7,15 @@ package frc.robot.subsystems.mechanisms;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import org.littletonrobotics.junction.Logger;
+// import org.littletonrobotics.junction.Logger;
 
-public class Scocer extends SubsystemBase {
+public class Scorer extends SubsystemBase {
   SparkMax L1 = new SparkMax(30, MotorType.kBrushed);
   /** Creates a new Scocer. */
-  public Scocer() {}
+  public Scorer() {}
 
   public void setPower(double power) {
-    Logger.recordOutput("/Score/power", power);
+    // Logger.recordOutput("/Score/power", power);
     L1.set(power);
   }
 
