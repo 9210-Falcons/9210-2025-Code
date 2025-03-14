@@ -9,6 +9,7 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
 import frc.robot.subsystems.drive.Drive;
+import frc.robot.subsystems.mechanisms.Flipper;
 import frc.robot.subsystems.mechanisms.Scorer;
 import frc.robot.util.CustomAutoBuilder;
 
@@ -17,31 +18,31 @@ import frc.robot.util.CustomAutoBuilder;
 // https://docs.wpilib.org/en/stable/docs/software/commandbased/convenience-features.html
 public class L1Auton extends SequentialCommandGroup {
   /** Creates a new L1Auton. */
-  public L1Auton(Drive drive, Scorer scocer) {
+  public L1Auton(Drive drive, Scorer scocer, Flipper flipper) {
     Command[] drivePaths = CustomAutoBuilder.getDrivePaths();
     Command autonPath =
         Commands.sequence(
             drivePaths[0],
             Commands.deadline(
-                new WaitCommand(1),
+                new WaitCommand(0.5),
                 Commands.run(() -> scocer.setPower(0.3), scocer)
                     .finallyDo(() -> scocer.setPower(0.0))));
     for (int i = 1; i < drivePaths.length; i++) {
       if (i % 2 == 1) {
-        autonPath = Commands.sequence(autonPath, drivePaths[i], new WaitCommand(2));
+        autonPath = Commands.sequence(autonPath, drivePaths[i], new WaitCommand(0.5));
       } else {
         autonPath =
             Commands.sequence(
                 autonPath,
                 drivePaths[i],
                 Commands.deadline(
-                    new WaitCommand(3),
+                    new WaitCommand(0.5),
                     Commands.run(() -> scocer.setPower(0.3), scocer)
                         .finallyDo(() -> scocer.setPower(0.0))));
       }
     }
     // Add your commands in the addCommands() call, e.g.
     // addCommands(new FooCommand(), new BarCommand());
-    addCommands(autonPath);
+    addCommands(Commands.parallel(autonPath, Commands.run(() -> flipper.L1Scoring(), flipper)));
   }
 }

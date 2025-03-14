@@ -34,6 +34,7 @@ import frc.robot.subsystems.drive.GyroIOPigeon2;
 import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOSim;
 import frc.robot.subsystems.drive.ModuleIOTalonFX;
+import frc.robot.subsystems.mechanisms.Flipper;
 import frc.robot.subsystems.mechanisms.Scorer;
 import frc.robot.util.CustomAutoBuilder;
 
@@ -47,6 +48,7 @@ public class RobotContainer {
   // Subsystems
   private final Drive drive;
   public final Scorer scocer;
+  private final Flipper flipper;
   // Controller
   private final CommandXboxController controller = new CommandXboxController(0);
 
@@ -93,6 +95,7 @@ public class RobotContainer {
         break;
     }
     scocer = new Scorer();
+    flipper = new Flipper();
 
     // Set up auto routines
     autoChooser = AutoBuilder.buildAutoChooser();
@@ -181,6 +184,8 @@ public class RobotContainer {
                             new Pose2d(drive.getPose().getTranslation(), new Rotation2d())),
                     drive)
                 .ignoringDisable(true));
+    controller.leftTrigger(0.8).onTrue(Commands.run(() -> flipper.L1Scoring(), flipper));
+    controller.rightTrigger(0.8).onTrue(Commands.run(() -> flipper.L2Scoring(), flipper));
   }
 
   /**
@@ -190,7 +195,7 @@ public class RobotContainer {
    */
   public Command getAutonomousCommand() {
     drive.setPose(CustomAutoBuilder.getStartPose2d());
-    return new L1Auton(drive, scocer);
+    return new L1Auton(drive, scocer, flipper);
     // return autoChooser.getSelected();
   }
 }
