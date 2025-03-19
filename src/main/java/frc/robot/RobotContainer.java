@@ -14,6 +14,7 @@
 package frc.robot;
 
 import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.path.PathPlannerPath;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -23,11 +24,14 @@ import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
-import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj2.command.WaitCommand;
+import edu.wpi.first.wpilibj2.command.button.CommandPS5Controller;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import frc.robot.commands.AutoAlign;
 import frc.robot.commands.DriveCommands;
 import frc.robot.commands.L1Auton;
 import frc.robot.generated.TunerConstants;
+import frc.robot.subsystems.Vision;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.GyroIO;
 import frc.robot.subsystems.drive.GyroIOPigeon2;
@@ -49,9 +53,11 @@ public class RobotContainer {
   private final Drive drive;
   public final Scorer scocer;
   private final Flipper flipper;
+  private final Vision vision;
   // Controller
-  private final CommandXboxController controller = new CommandXboxController(0);
-
+  //   private final CommandXboxController controller = new CommandXboxController(0);
+  private final CommandPS5Controller controller = new CommandPS5Controller(0);
+  private final CommandPS5Controller controller2 = new CommandPS5Controller(1);
   // Dashboard inputs
   private final SendableChooser<Command> autoChooser;
 
@@ -96,6 +102,7 @@ public class RobotContainer {
     }
     scocer = new Scorer();
     flipper = new Flipper();
+    vision = new Vision(drive);
 
     // Set up auto routines
     autoChooser = AutoBuilder.buildAutoChooser();
@@ -137,6 +144,8 @@ public class RobotContainer {
             () -> -ySlewRate.calculate(controller.getLeftY()),
             () -> -xSlewRate.calculate(controller.getLeftX()),
             () -> -controller.getRightX()));
+
+    controller.R2().whileTrue(new AutoAlign(drive, () -> false));
     // Lock to 0° when A button is held
     // controller
     //    .a()
@@ -146,27 +155,27 @@ public class RobotContainer {
     //            () -> -controller.getLeftY(),
     //            () -> -controller.getLeftX(),
     //            () -> new Rotation2d()));
-    controller
-        .a()
+    controller2
+        .cross()
         .whileTrue(
             Commands.run(() -> scocer.setPower(-0.3), scocer)
                 .finallyDo(() -> scocer.setPower(0.0)));
-    controller.leftBumper().onTrue(Commands.runOnce(() -> DriveCommands.slowSpeed = false));
-    controller.rightBumper().onTrue(Commands.runOnce(() -> DriveCommands.slowSpeed = true));
+    controller.L1().onTrue(Commands.runOnce(() -> DriveCommands.slowSpeed = false));
+    controller.R1().onTrue(Commands.runOnce(() -> DriveCommands.slowSpeed = true));
     // controller.b().onTrue(Commands.runOnce(() -> DriveCommands.slowSpeed = false));
     // Full speed is B
     // controller
     //    .x()
     //    .onTrue(Commands.runOnce(() -> DriveCommands.slowSpeed = true)); // Slowed speed is X
-    controller
-        .y()
+    controller2
+        .triangle()
         .whileTrue(
-            Commands.run(() -> scocer.setPower(0.3), scocer).finallyDo(() -> scocer.setPower(0.0)));
+            Commands.run(() -> scocer.setPower(0.6), scocer).finallyDo(() -> scocer.setPower(0.0)));
     // Switch to X pattern when X button is pressed
-    controller.x().onTrue(Commands.runOnce(drive::stopWithX, drive));
+    controller.square().onTrue(Commands.runOnce(drive::stopWithX, drive));
 
     controller
-        .back()
+        .options()
         .onTrue(
             Commands.runOnce(
                     () ->
@@ -176,7 +185,7 @@ public class RobotContainer {
 
     // Reset gyro to 0° when B button is pressed
     controller
-        .b()
+        .circle()
         .onTrue(
             Commands.runOnce(
                     () ->
@@ -184,8 +193,9 @@ public class RobotContainer {
                             new Pose2d(drive.getPose().getTranslation(), new Rotation2d())),
                     drive)
                 .ignoringDisable(true));
-    controller.leftTrigger(0.8).onTrue(Commands.run(() -> flipper.L1Scoring(), flipper));
-    controller.rightTrigger(0.8).onTrue(Commands.run(() -> flipper.L2Scoring(), flipper));
+
+    controller2.L2().onTrue(Commands.run(() -> flipper.L1Scoring(), flipper));
+    controller2.R2().onTrue(Commands.run(() -> flipper.L2Scoring(), flipper));
   }
 
   /**
@@ -195,6 +205,17 @@ public class RobotContainer {
    */
   public Command getAutonomousCommand() {
     drive.setPose(CustomAutoBuilder.getStartPose2d());
+    if (CustomAutoBuilder.getStartPose2d().getY() == 4.0) {
+      try {
+        return Commands.sequence(
+            AutoBuilder.followPath(PathPlannerPath.fromPathFile("Middle Auton")),
+            Commands.deadline(
+                new WaitCommand(0.75),
+                Commands.run(() -> scocer.setPower(0.6), scocer)
+                    .finallyDo(() -> scocer.setPower(0.0))));
+      } catch (Exception e) {
+      }
+    }
     return new L1Auton(drive, scocer, flipper);
     // return autoChooser.getSelected();
   }

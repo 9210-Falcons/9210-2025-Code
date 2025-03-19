@@ -52,8 +52,8 @@ public final class Constants {
     public static final Pose2d AB = new Pose2d(3.15, 4.2, Rotation2d.fromDegrees(0));
     public static final Pose2d CD = new Pose2d(3.6, 3.2, Rotation2d.fromDegrees(60));
     public static final Pose2d EF = new Pose2d(5.1, 3.2, Rotation2d.fromDegrees(120));
-    public static final Pose2d GH = new Pose2d(5.7, 3.87, Rotation2d.fromDegrees(180));
-    public static final Pose2d IJ = new Pose2d(5.4, 5.4, Rotation2d.fromDegrees(-120));
+    public static final Pose2d GH = new Pose2d(5.4, 3.87, Rotation2d.fromDegrees(180));
+    public static final Pose2d IJ = new Pose2d(5.1, 4.8, Rotation2d.fromDegrees(-120));
     public static final Pose2d KL = new Pose2d(3.8, 5.3, Rotation2d.fromDegrees(-60));
 
     public static final Pose2d R1 = new Pose2d(0.6, 7.5, Rotation2d.fromDegrees(-50));

@@ -25,7 +25,7 @@ public class L1Auton extends SequentialCommandGroup {
             drivePaths[0],
             Commands.deadline(
                 new WaitCommand(0.5),
-                Commands.run(() -> scocer.setPower(0.3), scocer)
+                Commands.run(() -> scocer.setPower(0.6), scocer)
                     .finallyDo(() -> scocer.setPower(0.0))));
     for (int i = 1; i < drivePaths.length; i++) {
       if (i % 2 == 1) {
@@ -37,7 +37,7 @@ public class L1Auton extends SequentialCommandGroup {
                 drivePaths[i],
                 Commands.deadline(
                     new WaitCommand(0.5),
-                    Commands.run(() -> scocer.setPower(0.3), scocer)
+                    Commands.run(() -> scocer.setPower(0.6), scocer)
                         .finallyDo(() -> scocer.setPower(0.0))));
       }
     }
